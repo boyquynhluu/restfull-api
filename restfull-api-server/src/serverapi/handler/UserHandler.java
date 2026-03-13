@@ -8,6 +8,7 @@ import serverapi.repository.UserRepository;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class UserHandler implements HttpHandler {
 
@@ -16,8 +17,20 @@ public class UserHandler implements HttpHandler {
 
         System.out.println("Incoming request: " + exchange.getRequestURI());
 
+        Headers headers = exchange.getRequestHeaders();
+        String requestApiKey = headers.getFirst("API-KEY");
         String method = exchange.getRequestMethod();
         String path = exchange.getRequestURI().getPath();
+        
+        // Validate API KEY
+        if(requestApiKey == null || !requestApiKey.equals("your_secret_key")) {
+            String error = "Lỗi: API-KEY không hợp lệ!";
+            exchange.sendResponseHeaders(401, error.length());
+            try (OutputStream os = exchange.getResponseBody()) {
+                os.write(error.getBytes());
+            }
+            return;
+        }
 
         if (method.equals("GET") && path.equals("/users")) {
             getAllUsers(exchange);
@@ -74,12 +87,18 @@ public class UserHandler implements HttpHandler {
     private void createUser(HttpExchange exchange) throws IOException {
 
         String body = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
-
-        String name = body.replace("name=", "");
-
-        User user = UserRepository.save(name);
-
-        sendResponse(exchange, 201, "Created user id=" + user.getId());
+        if(!body.isEmpty()) {
+            List<User> users = Arrays.stream(body.split("&"))
+                    .map(s -> s.split("="))
+                    .map(arr -> new User(Integer.parseInt(arr[0]), arr[1]))
+                    .collect(Collectors.toList());
+            for(User u : users) {
+                UserRepository.save(u.getId(), u.getName());
+            }
+            sendResponse(exchange, 201, "Created users!");
+        } else {
+            sendResponse(exchange, 400, "Bad request!");
+        }
     }
 
     private void updateUser(HttpExchange exchange, int id) throws IOException {
