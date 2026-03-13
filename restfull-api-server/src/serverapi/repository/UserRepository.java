@@ -1,9 +1,9 @@
 package serverapi.repository;
 
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import serverapi.model.User;
 
@@ -13,17 +13,15 @@ public class UserRepository {
     private static int idCounter = 1;
 
     public static List<User> findAll() {
-        return Arrays.asList(new User(1, "Tai"), new User(2, "Hue"));
+        return users.values().stream().collect(Collectors.toList());
     }
 
     public static User findById(int id) {
         return users.get(id);
     }
 
-    public static User save(String name) {
-        User user = new User(idCounter++, name);
-        users.put(user.getId(), user);
-        return user;
+    public static void save(int id, String name) {
+        users.put(id, new User(id, name));
     }
 
     public static User update(int id, String name) {
